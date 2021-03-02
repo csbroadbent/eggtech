@@ -128,7 +128,7 @@ def t_test(filepath):
 def main():
     # create2d_plots("../data/measurements/rounds-combined.csv")
     # create3d_plots("../data/measurements/round4_formatted.csv")
-    t_test("../data/measurements/round3_formatted_image_paths.csv")
+    t_test("../data/measurements/round5_formatted_image_paths.csv")
 
 if __name__ == '__main__':
     main()

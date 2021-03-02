@@ -72,11 +72,6 @@ def check_images(folderpath, filepath):
         i += 1
 
 
-
-
-
-
-
 def main():
     folderpath = "../data/images/round5/"
     filepath = "../data/measurements/round5_formatted_image_paths.csv"
