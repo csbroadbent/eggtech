@@ -1,0 +1,14 @@
+day0:
+
+Note: the data from this excel form are all from Day 0
+Note: Cd30 stands for Control experiment (Egg in the jar but no development) Dwell for 30 mins
+Note: D0' stands for dwell zero minute
+
+day2:
+
+green = headspace collected at 30.5 centigrade
+yellow = headspace collected at 33.5 centigrade
+
+day5:
+
+30.5 degree C: the highlighted yellow columns mean that these data were collected when the eggs were at 30.5 centigrade condition and dwell for 30 mins before the headspace collecting
