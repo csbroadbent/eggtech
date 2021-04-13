@@ -6,7 +6,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import plot_roc_curve
+# from sklearn.metrics import plot_roc_curve
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
@@ -165,7 +165,7 @@ def SVM(folderpath):
         print("______________________________________________________")
 
         # deg_list = [2,3,4,5,6,7]
-        gamma_list = [0.001 ,0.01, 0.1, 1, 10, 100]
+        gamma_list = [1]
 
         for gamma in gamma_list:
 
@@ -177,13 +177,28 @@ def SVM(folderpath):
                 X_train, X_test = X[train_index], X[test_index]
                 y_train, y_test = y[train_index], y[test_index]
 
-                clf = make_pipeline(StandardScaler(), SVC(kernel='rbf', gamma=gamma, C=1, class_weight='balanced', probability=True))
+                clf = make_pipeline(StandardScaler(), SVC(kernel='rbf', gamma=gamma, class_weight='balanced', probability=True))
                 clf.fit(X_train, y_train)
+                w = clf.decision_function(X_test)
+                w_zip = list(zip(w,y_test))
+                w_zip.sort(key =lambda x:x[0])
+                w_zip.reverse()
+                w, y_test = zip(*w_zip)
+                print("w")
+                print(w)
                 predictions = clf.predict(X_test)
                 acc = 1 - (len(y_test) - (y_test == predictions).sum()) / len(y_test)
                 scores.append(acc)
-                # print(y_test)
-                roc_scores.append(roc_auc_score(y_test, predictions))
+                print("y_test")
+                print(y_test)
+                print("predictions")
+                print(predictions)
+                print("AUROC")
+                print(roc_auc_score(y_test, w))
+                print("accuracy")
+                print(acc)
+                print("")
+                # roc_scores.append(roc_auc_score(y_test, w))
 
                 # method I: plt
                 # y_train_pred = clf.decision_function(X_train)
@@ -205,8 +220,8 @@ def SVM(folderpath):
                 # plt.show()
                 # plt.close()
 
-            print("gamma=", str(gamma), " | Average accuracy:", np.mean(scores))
-            print("Avg AUROC:", np.mean(roc_scores))
+            # print("gamma=", str(gamma), " | Average accuracy:", np.mean(scores))
+            # print("Avg AUROC:", np.mean(roc_scores))
             # print("deg=", str(deg), " | Average accuracy:", np.mean(scores))
             # print("Avg AUROC:", np.mean(roc_scores))
         print("")
@@ -246,7 +261,7 @@ def combine():
     combine_rounds(data_list, 12)
 
 def main():
-    folderpath = '../data/voc/labeled/combined/PCA/var=0.9'
+    folderpath = '../data/voc/labeled/combined/day6'
     # KNN(folderpath)
     SVM(folderpath)
 
