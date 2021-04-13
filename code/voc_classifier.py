@@ -5,12 +5,17 @@ from sklearn.svm import SVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import plot_roc_curve
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve
+from sklearn.metrics import auc
 import os
 
-NO_LABELS = False
-
+NO_LABELS = True
+COMBINING = True
 
 def combine_rounds(data_list, day):
     r3X, r3Y = data_list[0][0], data_list[0][1]
@@ -22,8 +27,9 @@ def combine_rounds(data_list, day):
 
     data = np.insert(X, 0, y, axis=1)
 
-    savepath = "../data/voc/labeled/combined/Day" + str(day) + "-combined.csv"
+    savepath = "../data/voc/labeled/combined/diff/Days" + str(day) + "-combined.csv"
     np.savetxt(savepath, data, delimiter=',')
+
 
 def get_data_matrix(filepath):
 
@@ -42,8 +48,15 @@ def get_data_matrix(filepath):
 
     y = np.array(df['label']).astype(int)
 
-    df = df.drop(['Data range', 'label'], axis=1)
-    df = df.drop(df.columns[0], axis=1)
+    if COMBINING == True:
+        df = df.drop(['Data range'], axis=1)
+
+        if df.columns[0] != 'label':
+            df = df.drop(df.columns[0], axis=1)
+
+    else:
+        df = df.drop(['Data range', 'label'], axis=1)
+        df = df.drop(df.columns[0], axis=1)
 
     X = np.array(df)
 
@@ -119,63 +132,88 @@ def SVM(folderpath):
         print("********************************************")
         print("")
 
-        kf = KFold(n_splits=5)
+        kf = StratifiedKFold(n_splits=5)
 
-        for train_index, test_index in kf.split(X):  # inelegant way to print train and test size
+        for train_index, test_index in kf.split(X, y):  # inelegant way to print train and test size
             print("Training size:", len(train_index))
             print("Testing size:", len(test_index))
             break
 
         print("# males:", len(np.where(y == 0)[0]))
         print("# females:", len(np.where(y == 1)[0]))
+        print("male/fem ratio:", (len(np.where(y == 0)[0]) / len(y)))
+
         print("")
-        print("LINEAR KERNEL")
-        print("______________________________________________________")
+        # print("LINEAR KERNEL")
+        # print("______________________________________________________")
 
         scores = []
-
-        for train_index, test_index in kf.split(X):
-            X_train, X_test = X[train_index], X[test_index]
-            y_train, y_test = y[train_index], y[test_index]
-
-            clf = make_pipeline(StandardScaler(), SVC(kernel='linear', class_weight='balanced'))
-            clf.fit(X_train, y_train)
-            predictions = clf.predict(X_test)
-            acc = 1 - (len(y_test) - (y_test == predictions).sum()) / len(y_test)
-            scores.append(acc)
-
-        print("Average accuracy is: ", np.mean(scores))
-        print("")
+        #
+        # for train_index, test_index in kf.split(X):
+        #     X_train, X_test = X[train_index], X[test_index]
+        #     y_train, y_test = y[train_index], y[test_index]
+        #
+        #     clf = make_pipeline(StandardScaler(), SVC(kernel='linear', class_weight='balanced'))
+        #     clf.fit(X_train, y_train)
+        #     predictions = clf.predict(X_test)
+        #     acc = 1 - (len(y_test) - (y_test == predictions).sum()) / len(y_test)
+        #     scores.append(acc)
+        #
+        # print("Average accuracy is: ", np.mean(scores))
+        # print("")
         print("RBF KERNEL")
         print("______________________________________________________")
 
-        gamma_list = [0.001, 0.01, 0.1, 1, 10, 100]
+        # deg_list = [2,3,4,5,6,7]
+        gamma_list = [0.001 ,0.01, 0.1, 1, 10, 100]
 
         for gamma in gamma_list:
 
             scores = []
+            roc_scores = []
 
-            for train_index, test_index in kf.split(X):
+            for train_index, test_index in kf.split(X, y):
 
                 X_train, X_test = X[train_index], X[test_index]
                 y_train, y_test = y[train_index], y[test_index]
 
-                clf = make_pipeline(StandardScaler(), SVC(kernel='rbf', gamma=gamma, class_weight='balanced'))
+                clf = make_pipeline(StandardScaler(), SVC(kernel='rbf', gamma=gamma, C=1, class_weight='balanced', probability=True))
                 clf.fit(X_train, y_train)
                 predictions = clf.predict(X_test)
                 acc = 1 - (len(y_test) - (y_test == predictions).sum()) / len(y_test)
                 scores.append(acc)
+                # print(y_test)
+                roc_scores.append(roc_auc_score(y_test, predictions))
 
-            print("gamma=", gamma, " | Average accuracy:", np.mean(scores))
+                # method I: plt
+                # y_train_pred = clf.decision_function(X_train)
+                # y_test_pred = clf.decision_function(X_test)
+                #
+                # train_fpr, train_tpr, tr_thresholds = roc_curve(y_train, y_train_pred)
+                # test_fpr, test_tpr, te_thresholds = roc_curve(y_test, y_test_pred)
+                #
+                # plt.grid()
+                #
+                # plt.plot(train_fpr, train_tpr, label=" AUC TRAIN =" + str(auc(train_fpr, train_tpr)))
+                # plt.plot(test_fpr, test_tpr, label=" AUC TEST =" + str(auc(test_fpr, test_tpr)))
+                # plt.plot([0, 1], [0, 1], 'g--')
+                # plt.legend()
+                # plt.xlabel("True Positive Rate")
+                # plt.ylabel("False Positive Rate")
+                # plt.title("AUC(ROC curve)")
+                # plt.grid(color='black', linestyle='-', linewidth=0.5)
+                # plt.show()
+                # plt.close()
 
+            print("gamma=", str(gamma), " | Average accuracy:", np.mean(scores))
+            print("Avg AUROC:", np.mean(roc_scores))
+            # print("deg=", str(deg), " | Average accuracy:", np.mean(scores))
+            # print("Avg AUROC:", np.mean(roc_scores))
         print("")
 
 
 def combine():
     for i in range(1, 7):
-        if i == 5:
-            continue
-
         r3filepath = '../data/voc/labeled/round3/R3-Day' + str(i) + '.csv'
         r4filepath = '../data/voc/labeled/round4/Day ' + str(i) + '.csv'
         r5filepath = '../data/voc/labeled/round5/Day ' + str(i) + '.csv'
@@ -191,12 +229,28 @@ def combine():
         data_list = [r3,r4,r5]
         combine_rounds(data_list, i)
 
-def main():
-    folderpath = '../data/voc/labeled/combined'
-    # KNN(folderpath)
-    # SVM(folderpath)
+def combine():
+    r3filepath = '../data/voc/labeled/combined/diff/R3-Days1-2-diff.csv'
+    r4filepath = '../data/voc/labeled/combined/diff/R4-Days1-2-diff.csv'
+    r5filepath = '../data/voc/labeled/combined/diff/R5-Days1-2-diff.csv'
 
-    combine()
+    r3 = [[], []]
+    r4 = [[], []]
+    r5 = [[], []]
+
+    r3[0], r3[1] = get_data_matrix(r3filepath)
+
+    r4[0], r4[1] = get_data_matrix(r4filepath)
+    r5[0], r5[1] = get_data_matrix(r5filepath)
+    data_list = [r3,r4,r5]
+    combine_rounds(data_list, 12)
+
+def main():
+    folderpath = '../data/voc/labeled/combined/PCA/var=0.9'
+    # KNN(folderpath)
+    SVM(folderpath)
+
+    # combine()
 
 
 

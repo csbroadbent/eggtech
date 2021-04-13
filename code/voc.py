@@ -4,11 +4,17 @@ import numpy as np
 import pandas as pd
 import os
 from sklearn.decomposition import KernelPCA
+from sklearn.decomposition import PCA
 import math
 from sklearn.model_selection import KFold
 pd.options.mode.chained_assignment = None  # default='warn'
 FILE_NAME = 'R3-Day8.csv'
-FOLDER_PATH = '../data/voc/labeled/round3/KPCA'
+FOLDER_PATH = '../data/voc/labeled/combined/'
+LABELS = False
+
+def t_test(filepath):
+    df = pd.read_csv(filepath)
+    print(df)
 
 def label_voc(voc_path, label_path):
 
@@ -43,35 +49,60 @@ def label_voc(voc_path, label_path):
                         day['label'][index] = -1
 
         save_path = '../data/voc/labeled/round5/' + sheet + '.csv'
-        day.to_csv(save_path, sep=',')
 
-def PCA(filepath, filename):
+
+def My_PCA(filepath, filename):
     data = pd.read_csv(filepath, sep=',', index_col=False)
-    invalid_label = data.loc[data['label'] == -1].index
 
-    data_drop = data.drop(invalid_label, axis=0)
-    labels = data_drop['label'].values
-    data_drop = data_drop.drop(['Data range', 'label'], axis=1)
-    data_matrix = data_drop.values
-    data_matrix = np.delete(data_matrix, 0, axis=-1)
+    if LABELS == False:
+        data = data.to_numpy()
+        labels = data[:,0].astype(int)
+        data = np.delete(data, 0, axis=1)
+        invalid_label = np.where(labels == -1)
+        data_matrix = np.delete(data, invalid_label, axis=0)
 
-    transformer = KernelPCA(kernel='linear')
-    data_transformed = transformer.fit_transform(data_matrix)
-    data_transformed = np.insert(data_transformed, 0, labels.astype(int), axis=1)
+    else:
+        invalid_label = data.loc[data['label'] == -1].index
 
-    file_name = '../data/voc/labeled/round4/PCA/' + filename[:-4] + '-PCA.csv'
-    np.savetxt(file_name, data_transformed, delimiter=',')
+        data_drop = data.drop(invalid_label, axis=0)
+        labels = data_drop['label'].values
+        data_drop = data_drop.drop(['Data range', 'label'], axis=1)
+        data_matrix = data_drop.values
+        data_matrix = np.delete(data_matrix, 0, axis=-1)
+
+    var_list = [0.90, 0.95, 0.99]
+
+    for var in var_list:
+
+        pca = PCA(n_components=var, svd_solver='full')
+        pca.fit(data_matrix)
+        data_transformed = pca.transform(data_matrix)
+
+        data_transformed = np.insert(data_transformed, 0, labels.astype(int), axis=1)
+
+        file_name = '../data/voc/labeled/combined/PCA/var=' + str(var) + '/' + filename[:-4] + '-PCA-var=' + str(var) + '.csv'
+        np.savetxt(file_name, data_transformed, delimiter=',')
 
 def KPCA(filepath, filename):
 
     data = pd.read_csv(filepath, sep=',', index_col=False)
-    invalid_label = data.loc[data['label'] == -1].index
 
-    data_drop = data.drop(invalid_label, axis=0)
-    labels = data_drop['label'].values
-    data_drop = data_drop.drop(['Data range', 'label'], axis=1)
-    data_matrix = data_drop.values
-    data_matrix = np.delete(data_matrix, 0, axis=-1)
+
+    if LABELS == False:
+        data = data.to_numpy()
+        labels = data[:,0].astype(int)
+        data = np.delete(data, 0, axis=1)
+        invalid_label = np.where(labels == -1)
+        data_matrix = np.delete(data, invalid_label, axis=0)
+
+    else:
+        invalid_label = data.loc[data['label'] == -1].index
+        data_drop = data.drop(invalid_label, axis=0)
+        labels = data_drop['label'].values
+        data_drop = data_drop.drop(['Data range', 'label'], axis=1)
+
+        data_matrix = data_drop.values
+        data_matrix = np.delete(data_matrix, 0, axis=-1)
 
     mean = np.mean(data_matrix, axis=0)
     data_norm = data_matrix - mean
@@ -90,8 +121,17 @@ def KPCA(filepath, filename):
         data_transformed = transformer.fit_transform(data_norm)
         data_transformed = np.insert(data_transformed, 0, labels.astype(int), axis=1)
         gamma_path = 'gamma=' + str(gamma) +'/'
-        file_name = '../data/voc/labeled/round3/KPCA/gamma=' + str(gamma) + '/' + filename[:-4] + '-KPCA-rbf-gamma=' + str(gamma) + '.csv'
+        file_name = '../data/voc/labeled/combined/KPCA/gamma=' + str(gamma) + '/' + filename[:-4] + '-KPCA-rbf-gamma=' + str(gamma) + '.csv'
         np.savetxt(file_name, data_transformed, delimiter=',')
+
+    # deg_list = [2,3,4]
+    # for deg in deg_list:
+    #     transformer = KernelPCA(kernel='poly', degree=deg)
+    #     data_transformed = transformer.fit_transform(data_norm)
+    #     data_transformed = np.insert(data_transformed, 0, labels.astype(int), axis=1)
+    #     deg_path = 'deg=' + str(deg) + '/'
+    #     file_name = '../data/voc/labeled/combined/KPCA/poly/deg=' + str(deg) + '/' + filename[:-4] + '-KPCA-poly-deg=' + str(deg) + '.csv'
+    #     np.savetxt(file_name, data_transformed, delimiter=',')
 
 def create_KPCA_plots(folderpath):
 
@@ -161,11 +201,11 @@ def get_diff(day1_path, day2_path):
     labels = day1['label'].values
     data_drop1 = day1.drop(['Data range', 'label'], axis=1)
     data_drop2 = day2.drop(['Data range', 'label'], axis=1)
-    data_matrix = np.absolute(data_drop1.values - data_drop2.values)
+    data_matrix = data_drop1.values - data_drop2.values
     data_matrix = np.delete(data_matrix, 0, axis=1)
     data_matrix = np.insert(data_matrix, 0, labels, axis=1)
 
-    file_name = '../data/voc/labeled/round3/diff/Days5-6-diff.csv'
+    file_name = '../data/voc/labeled/round5/diff/Days1-2-diff.csv'
 
     np.savetxt(file_name, data_matrix, delimiter=',')
 
@@ -175,7 +215,7 @@ def get_diff(day1_path, day2_path):
     data_transformed = transformer.fit_transform(data_matrix)
     data_transformed = np.insert(data_transformed, 0, labels.astype(int), axis=1)
 
-    file_name = '../data/voc/labeled/round3/PCA/Days5-6-PCA.csv'
+    file_name = '../data/voc/labeled/round5/PCA/Days1-2-PCA.csv'
     np.savetxt(file_name, data_transformed, delimiter=',')
 
     mean = np.mean(data_matrix, axis=0)
@@ -195,7 +235,7 @@ def get_diff(day1_path, day2_path):
         data_transformed = transformer.fit_transform(data_norm)
         data_transformed = np.insert(data_transformed, 0, labels.astype(int), axis=1)
         gamma_path = 'gamma=' + str(gamma) +'/'
-        file_name = '../data/voc/labeled/round3/KPCA/gamma=' + str(gamma) + '/Days5-6-KPCA-rbf-gamma=' + str(gamma) + '.csv'
+        file_name = '../data/voc/labeled/round5/KPCA/gamma=' + str(gamma) + '/Days1-2-KPCA-rbf-gamma=' + str(gamma) + '.csv'
         np.savetxt(file_name, data_transformed, delimiter=',')
 
 
@@ -204,23 +244,23 @@ def main():
     # label_path = '../data/measurements/round5_complete.csv'
     # label_voc(voc_path, label_path)
     #
-    # for filename in os.listdir(FOLDER_PATH):
-    #     if filename[-4:] == '.csv':
-    #         filepath = '../data/voc/labeled/round5/' + filename
-    #         KPCA(filepath, filename)
+    for filename in os.listdir(FOLDER_PATH):
+        if filename[-4:] == '.csv':
+            filepath = '../data/voc/labeled/combined/' + filename
+            My_PCA(filepath, filename)
 
-
-    # folderpath = '../data/voc/labeled/round5/PCA'
-    create_KPCA_plots(FOLDER_PATH)
+    # create_KPCA_plots(FOLDER_PATH)
 
     # for filename in os.listdir('../data/voc/labeled/round5'):
     #     if filename[-4:] == '.csv':
     #         path = '../data/voc/labeled/round5/' + filename
     #         PCA(path, filename)
 
-    # day1_path = '../data/voc/labeled/round3/diff/R3-Day5-diff.csv'
-    # day2_path = '../data/voc/labeled/round3/diff/R3-Day6-diff.csv'
+    # day1_path = '../data/voc/labeled/round5/diff/Day 1.csv'
+    # day2_path = '../data/voc/labeled/round5/diff/Day 2.csv'
     # get_diff(day1_path, day2_path)
+
+    # t_test('../data/voc/labeled/combined/day6/Day6-combined.csv')
 
 
 
