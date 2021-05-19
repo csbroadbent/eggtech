@@ -7,6 +7,7 @@ from sklearn.decomposition import KernelPCA
 from sklearn.decomposition import PCA
 import math
 from sklearn.model_selection import KFold
+import re
 pd.options.mode.chained_assignment = None  # default='warn'
 FILE_NAME = 'R3-Day8.csv'
 FOLDER_PATH = '../data/voc/labeled/combined/'
@@ -238,16 +239,65 @@ def get_diff(day1_path, day2_path):
         file_name = '../data/voc/labeled/round5/KPCA/gamma=' + str(gamma) + '/Days1-2-KPCA-rbf-gamma=' + str(gamma) + '.csv'
         np.savetxt(file_name, data_transformed, delimiter=',')
 
+def combine_day_pairs(folderpath, days):
+
+    day1_path = folderpath + 'Day ' + str(days[0]) + '.csv'
+    day2_path = folderpath + 'Day ' + str(days[1]) + '.csv'
+
+    day1_df = pd.read_csv(day1_path)
+    day2_df = pd.read_csv(day2_path)
+
+    drop_indices = []
+
+    for index, id in zip(day1_df.index,day1_df['Data range']):
+        reg = re.search("(\d{4})", id)
+        if not reg:
+            drop_indices.append(index)
+        else:
+            new_id = reg.group()
+            day1_df.at[index, 'Data range'] = new_id
+
+    day1_df = day1_df.drop(labels=drop_indices)
+
+    drop_indices = []
+
+    for index, id in zip(day2_df.index,day2_df['Data range']):
+        reg = re.search("(\d{4})", id)
+        if not reg:
+            drop_indices.append(index)
+        else:
+            new_id = reg.group()
+            day2_df.at[index, 'Data range'] = new_id
+
+    day2_df = day2_df.drop(labels=drop_indices)
+
+    day1_ordered_indices = []
+    day2_ordered_indices = []
+
+    day2_df = day2_df.drop(columns=['label'], axis=1)
+    day2_df = day2_df.drop(columns=day2_df.columns[[0]], axis=1)
+
+    merged = pd.merge(day1_df, day2_df, how='inner', on='Data range')
+    merged = merged.drop(columns=merged.columns[[0]], axis=1)
+    merged = merged.drop(merged.loc[merged['label']==-1].index)
+
+    filename = 'Days' + str(days[0]) + '&' + str(days[1]) + '.csv'
+    savepath = folderpath + filename
+
+    merged.to_csv(savepath, index=False)
+
+
+
 
 def main():
     # voc_path = '../data/voc/r5-uniform.xlsx'
     # label_path = '../data/measurements/round5_complete.csv'
     # label_voc(voc_path, label_path)
     #
-    for filename in os.listdir(FOLDER_PATH):
-        if filename[-4:] == '.csv':
-            filepath = '../data/voc/labeled/combined/' + filename
-            My_PCA(filepath, filename)
+    # for filename in os.listdir(FOLDER_PATH):
+    #     if filename[-4:] == '.csv':
+    #         filepath = '../data/voc/labeled/combined/' + filename
+    #         My_PCA(filepath, filename)
 
     # create_KPCA_plots(FOLDER_PATH)
 
@@ -261,7 +311,9 @@ def main():
     # get_diff(day1_path, day2_path)
 
     # t_test('../data/voc/labeled/combined/day6/Day6-combined.csv')
-
+    days_list = [[1,5], [1,6], [2,5], [2,6]]
+    for days in days_list:
+        combine_day_pairs('../data/voc/labeled/round3/', days)
 
 
 
