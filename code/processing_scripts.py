@@ -31,16 +31,17 @@ def write_path(folderpath, filepath):
 
 def move_images(folderpath, filepath):
     data = pd.read_csv(filepath)
+    folder_dst = '../data/images/split/round4/length/'
 
     for i in range(len(data)):
         if data['label'][i] == 'M':
-            src = folderpath + data['imagepath-width'][i]
-            dst = folderpath + "male-width-5/" + data['imagepath-width'][i]
+            src = folderpath + data['imagepath-length'][i]
+            dst = folder_dst + "male-length-4/" + data['imagepath-length'][i]
             copyfile(src,dst)
 
         elif data['label'][i] == 'F':
-            src = folderpath + data['imagepath-width'][i]
-            dst = folderpath + "female-width-5/" + data['imagepath-width'][i]
+            src = folderpath + data['imagepath-length'][i]
+            dst = folder_dst + "female-length-4/" + data['imagepath-length'][i]
             copyfile(src, dst)
 
 def check_images(folderpath, filepath):
@@ -73,8 +74,8 @@ def check_images(folderpath, filepath):
 
 
 def main():
-    folderpath = "../data/images/round5/"
-    filepath = "../data/measurements/round5_formatted_image_paths.csv"
+    folderpath = "../data/images/round4/"
+    filepath = "../data/measurements/round-4.csv"
 
     move_images(folderpath, filepath)
 

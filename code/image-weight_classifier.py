@@ -582,7 +582,7 @@ def SVM_poly(data_list):
                              (len(np.where(y == 0)[0]) / len(y))]
                 z -= 1
 
-                data_info.loc['3 & 5 - Poly'] = data_list
+                data_info.loc['All - Poly'] = data_list
                 print(data_info)
 
             y_train, y_test = y[train_index], y[test_index]
@@ -631,7 +631,7 @@ def main():
         ROUND = round
         filepath = '../data/measurements/round-' + str(round) + '.csv'
         data_list = getData(filepath)
-        table, data_info = SVM_rbf(data_list)
+        table, data_info = SVM_poly(data_list)
         print(data_info)
         print(table)
         table_name = '../results/tables/table-poly-N-' + str(round) + '.tex'

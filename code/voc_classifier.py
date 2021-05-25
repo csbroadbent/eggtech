@@ -19,7 +19,7 @@ import os
 import plotly.graph_objects as go
 from tqdm import tqdm
 
-NO_LABELS = True
+NO_LABELS = False
 COMBINING = False
 
 def combine_rounds(data_list, day):
@@ -285,7 +285,163 @@ def SVM(folderpath, days='all',):
 
         print("")
 
+def SVM_poly(folderpath, days='all',):
+    for filename in os.listdir(folderpath):
 
+        table = pd.DataFrame(
+            columns=['C', 'degree', 'avg. Accuracy', 'std.', 'avg. AUROC', 'std.'])  # for different gammas
+
+        data_info = pd.DataFrame(
+            columns=['# training samples', '# test samples', '# males', '# females', 'male/fem ratio'])
+
+        if filename[-4:] != '.csv': #skip over folders
+            continue
+
+
+        if days != 'all':
+            if filename[:-4] not in days:
+                continue
+
+        filepath = folderpath + '/' + filename
+        X, y = get_data_matrix(filepath)
+
+        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
+
+        print(filename[:-4])
+        print("SVM")
+        print("********************************************")
+        print("")
+
+        kf = StratifiedKFold(n_splits=10)
+
+        for train_index, test_index in kf.split(X, y):  # inelegant way to print train and test size
+            print("Training size:", len(train_index))
+            print("Testing size:", len(test_index))
+            break
+
+        print("# males:", len(np.where(y == 0)[0]))
+        print("# females:", len(np.where(y == 1)[0]))
+        print("male/fem ratio:", (len(np.where(y == 0)[0]) / len(y)))
+
+        print("")
+        # print("LINEAR KERNEL")
+        # print("______________________________________________________")
+
+        scores = []
+        #
+        # for train_index, test_index in kf.split(X):
+        #     X_train, X_test = X[train_index], X[test_index]
+        #     y_train, y_test = y[train_index], y[test_index]
+        #
+        #     clf = make_pipeline(StandardScaler(), SVC(kernel='linear', class_weight='balanced'))
+        #     clf.fit(X_train, y_train)
+        #     predictions = clf.predict(X_test)
+        #     acc = 1 - (len(y_test) - (y_test == predictions).sum()) / len(y_test)
+        #     scores.append(acc)
+        #
+        # print("Average accuracy is: ", np.mean(scores))
+        # print("")
+        # print("RBF KERNEL")
+        # print("______________________________________________________")
+        #
+        # deg_list = [2,3,4,5,6,7]
+        #
+
+        # gamma_list = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.015, 0.1, 0.5, 1]
+        # C_list = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.015, 0.1, 0.5, 1]
+
+        j = 1
+
+
+        gamma_list = [0.001, 0.01, 0.1, 1, 10, 100]
+        C_list = [0.001, 0.01, 0.1, 1, 10, 100]
+
+        max_auroc = (0, 0, 0, 0, 0, 0)
+
+
+        for C in C_list:
+
+            scores = []
+            roc_scores = []
+
+            for train_index, test_index in kf.split(X, y):
+
+
+                X_train, X_test = X[train_index], X[test_index]
+                y_train, y_test = y[train_index], y[test_index]
+
+                if j == 1:
+
+                    data_list = [len(X_train), len(X_test), len(np.where(y == 0)[0]), len(np.where(y == 1)[0]), (len(np.where(y == 0)[0]) / len(y))]
+                    j -= 1
+
+                    data_info.loc[filename] = data_list
+
+                clf = make_pipeline(StandardScaler(), SVC(kernel='poly', C =C, class_weight='balanced', probability=True))
+                clf.fit(X_train, y_train)
+                predictions = clf.predict(X_test)
+
+                w = clf.decision_function(X_test)
+                w_zip = list(zip(w,y_test, predictions))
+                w_zip.sort(key =lambda x:x[0])
+                w_zip.reverse()
+                w, y_test, predictions = zip(*w_zip)
+                w = np.array(w)
+                y_test = np.array(y_test)
+                predictions = np.array(predictions)
+                acc = 1 - (len(y_test) - (y_test == predictions).sum()) / len(y_test)
+                scores.append(acc)
+
+                roc_scores.append(roc_auc_score(y_test, w))
+
+                # print("y_test")
+                # print(y_test)
+                # print("predictions")
+                # print(predictions)
+                # print("AUROC")
+                # print(roc_auc_score(y_test, w))
+                # print("accuracy")
+                # print(acc)
+                # print("")
+
+                # method I: plt
+                # y_train_pred = clf.decision_function(X_train)
+                # y_test_pred = clf.decision_function(X_test)
+                #
+                # train_fpr, train_tpr, tr_thresholds = roc_curve(y_train, y_train_pred)
+                # test_fpr, test_tpr, te_thresholds = roc_curve(y_test, y_test_pred)
+                #
+                # plt.grid()
+                #
+                # plt.plot(train_fpr, train_tpr, label=" AUC TRAIN =" + str(auc(train_fpr, train_tpr)))
+                # plt.plot(test_fpr, test_tpr, label=" AUC TEST =" + str(auc(test_fpr, test_tpr)))
+                # plt.plot([0, 1], [0, 1], 'g--')
+                # plt.legend()
+                # plt.xlabel("True Positive Rate")
+                # plt.ylabel("False Positive Rate")
+                # plt.title("AUC(ROC curve)")
+                # plt.grid(color='black', linestyle='-', linewidth=0.5)
+                # plt.show()
+                # plt.close()
+
+
+            if np.mean(roc_scores) > max_auroc[3]:
+                max_auroc = (C, 2, np.mean(scores), np.std(scores), np.mean(roc_scores), np.std(roc_scores))
+
+        max_auroc = list(max_auroc)
+        table.loc[filename] = max_auroc
+
+        table_name = '../results/tables/table-poly' + filename + '.tex'
+        with open(table_name, 'w') as tf:
+            tf.write(
+                data_info.to_latex().replace('\\toprule', '\\hline').replace('\\midrule', '\\hline').replace(
+                    '\\bottomrule',
+                    '\\hline'))
+            tf.write(
+                table.to_latex().replace('\\toprule', '\\hline').replace('\\midrule', '\\hline').replace('\\bottomrule',
+                                                                                                         '\\hline'))
+
+    print("")
 
 def combine():
     for i in range(1, 7):
@@ -329,17 +485,11 @@ def plot():
     fig.show()
 
 def main():
-    folderpath = '../data/voc/labeled/combined'
+    folderpath = '../data/voc/labeled/combined/paired-days'
 
-    # plot()
-
-
+    SVM_poly(folderpath, 'all')
 
 
-    SVM(folderpath, 'all')
-
-
-    # combine()
 
 
 
