@@ -100,7 +100,7 @@ x_val = np.array(x_val)
 y_val = np.array(y_val)
 
 
-batch_size = 8
+batch_size = 64
 num_classes = 2
 epochs = 20
 
