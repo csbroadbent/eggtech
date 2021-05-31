@@ -1,6 +1,6 @@
 import os
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import keras
 from keras.datasets import mnist
@@ -16,7 +16,7 @@ import cv2
 import random
 
 random.seed(552)
-split_path = '../data/images/split/train_val_test_length'
+split_path = '../data/images/split/train_val_test_length_crop'
 
 def create_dataset(folder_path):
 
@@ -100,7 +100,7 @@ x_val = np.array(x_val)
 y_val = np.array(y_val)
 
 
-batch_size = 64
+batch_size = 1
 num_classes = 2
 epochs = 20
 
