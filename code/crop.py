@@ -3,7 +3,7 @@ import cv2
 from matplotlib import pyplot as plt
 import os
 
-folder_path = '../data/images/split/combined_width'
+folder_path = '../data/images/split/combined_length'
 
 width_max = 0
 height_max = 0
@@ -68,7 +68,6 @@ for sex in os.listdir(folder_path):
                 right = i
                 break
 
-
         edges[top] = np.ones(1600)
         edges[bottom] = np.ones(1600)
         edges[:,left] = np.ones(1200)
@@ -76,7 +75,6 @@ for sex in os.listdir(folder_path):
 
         width = right - left
         height = bottom - top
-
 
         if width > width_max:
             width_max = width
@@ -93,7 +91,8 @@ for sex in os.listdir(folder_path):
 
 print("Cropped egg dimensions should be: ", width_max, " X ", height_max)
 
-dim = (width_max + 25, height_max + 25)
+img_dim = max(width_max, height_max)
+
 print("num pics: ", num_pics)
 i = 0
 male_path = folder_path + '/male'
@@ -105,33 +104,81 @@ for file in os.listdir(os.path.join(male_path)):
     bottom = crop_coords_male[i][3]
 
     img = cv2.imread(os.path.join(male_path, file), 0)
-    img = img[top-10:, left - 10 :]
-    new_height = img.shape[1] - (img.shape[1] - dim[1])
-    new_width = img.shape[0] - (img.shape[0] - dim[0])
-    img = img[:new_height, :new_width]
 
-    img_name = '../data/images/split/cropped_width/male/' + str(i) + '.bmp'
-    cv2.imwrite(img_name, img)
+    img = img[top - 15:, left - 25:]
+    new_width = right - left
+    new_height = bottom - top
+    img = img[:new_height + 25, :new_width + 45]
+    h, w = img.shape
+
+    sq_img = np.ones((img_dim + 50, img_dim + 50)) * 255
+    hh, ww = sq_img.shape
+
+    yoff = round((hh - h) / 2)
+    xoff = round((ww - w) / 2)
+
+    # if i >= 93:
+    #     rand_pixels = img.flatten()
+    #     rand_pixels = rand_pixels[rand_pixels > 175]
+    #     sq_img = np.random.choice(rand_pixels, size=(hh,ww))
+
+    sq_img[yoff:yoff+h, xoff:xoff+w] = img
+
+    edges = cv2.Canny(np.uint8(sq_img), 250, 450)
+    thresh = cv2.threshold(edges, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    print(cnts)
+    cv2.fillPoly(edges, cnts, [255, 255, 255])
+
+    sq_img = edges
+
+    img_name = '../data/images/split/cropped_length/male/' + str(i) + '.bmp'
+    cv2.imwrite(img_name, sq_img)
+
+    # edges = cv2.Canny(np.uint8(sq_img), 400, 500)
+    # edges = edges // 255
+    # edges = edges.astype(int)
+    # img_binary = (np.array(sq_img) // 255).astype(int)
+    #
+    # img_binary = np.bitwise_and(np.invert(edges), img_binary)
+    # img_binary = img_binary * 255
+    # sq_img = img_binary.astype(float)
+    #
+    # img_name = '../data/images/split/cropped_length/masked/male/' + str(i) + '.bmp'
+    # cv2.imwrite(img_name, sq_img)
     i += 1
 
-i = 0
-female_path = folder_path + '/female'
-for file in os.listdir(os.path.join(female_path)):
-
-    left = crop_coords_female[i][0]
-    right = crop_coords_female[i][1]
-    top = crop_coords_female[i][2]
-    bottom = crop_coords_female[i][3]
-
-    img = cv2.imread(os.path.join(female_path, file), 0)
-    img = img[top-10:, left - 10 :]
-    new_height = img.shape[1] - (img.shape[1] - dim[1])
-    new_width = img.shape[0] - (img.shape[0] - dim[0])
-    img = img[:new_height, :new_width]
-    # cv2.imshow('Image', img)
-    # cv2.waitKey(0)
-
-    img_name = '../data/images/split/cropped_width/female/' + str(i) + '.bmp'
-    cv2.imwrite(img_name, img)
-    i += 1
+# i = 0
+# female_path = folder_path + '/female'
+# for file in os.listdir(os.path.join(female_path)):
+#
+#     left = crop_coords_female[i][0]
+#     right = crop_coords_female[i][1]
+#     top = crop_coords_female[i][2]
+#     bottom = crop_coords_female[i][3]
+#
+#     img = cv2.imread(os.path.join(female_path, file), 0)
+#
+#     img = img[top - 15:, left - 25:]
+#     new_width = right - left
+#     new_height = bottom - top
+#     img = img[:new_height + 25, :new_width + 45]
+#     h, w = img.shape
+#
+#     sq_img = np.ones((img_dim + 50, img_dim + 50)) * 255
+#     hh, ww = sq_img.shape
+#
+#     yoff = round((hh - h) / 2)
+#     xoff = round((ww - w) / 2)
+#
+#     rand_pixels = img.flatten()
+#     rand_pixels = rand_pixels[rand_pixels > 175]
+#     sq_img = np.random.choice(rand_pixels, size=(hh,ww))
+#
+#     sq_img[yoff:yoff+h, xoff:xoff+w] = img
+#
+#     img_name = '../data/images/split/cropped_length/female/' + str(i) + '.bmp'
+#     cv2.imwrite(img_name, sq_img)
+#     i += 1
 

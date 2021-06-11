@@ -2,12 +2,13 @@ import os
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-import keras
+from tensorflow import keras
 from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, Activation
 from keras.layers import Conv2D, MaxPooling2D, BatchNormalization
 from keras import backend as K
+import matplotlib.pyplot as plt
 from datetime import datetime
 from LReLU import LReLU
 import os
@@ -16,7 +17,7 @@ import cv2
 import random
 
 random.seed(552)
-split_path = '../data/images/split/train_val_test_length_crop'
+split_path = '../data/images/split/train_val_test_crop'
 
 def create_dataset(folder_path):
 
@@ -100,19 +101,21 @@ x_val = np.array(x_val)
 y_val = np.array(y_val)
 
 
-batch_size = 1
+batch_size = 128
 num_classes = 2
-epochs = 20
+epochs = 5
 
 # input image dimensions
-img_rows, img_cols = 1600, 1200
+img_rows, img_cols = 901, 671
 
+print(x_val.shape)
 
 # convert data format to channel last format
 x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)
 x_valid = x_val.reshape(x_val.shape[0], img_rows, img_cols, 1)
 x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)
 input_shape = (img_rows, img_cols, 1)
+print(x_valid.shape)
 
 # convert class vectors to binary class matrices
 y_train = keras.utils.to_categorical(y_train, num_classes)
@@ -121,15 +124,22 @@ y_test = keras.utils.to_categorical(y_test, num_classes)
 
 model = Sequential()
 # structure 1
-# model.add(Conv2D(1, kernel_size=(4, 4),
-#                 activation='linear',
-#                 input_shape=input_shape))
-# model.add(BatchNormalization())
-# model.add(Flatten())
-# model.add(Activation(LReLU))
-# model.add(Dense(num_classes, activation='softmax'))
+model.add(Conv2D(1, kernel_size=(4, 4),
+                activation='linear',
+                input_shape=input_shape))
+model.add(BatchNormalization())
+model.add(Flatten())
+model.add(Activation(LReLU))
+model.add(Dense(num_classes, activation='softmax'))
 
 # structure 2
+model.add(Conv2D(30, kernel_size=(3, 3),
+                 activation='linear',
+                 input_shape=input_shape,
+                 padding='same'))
+model.add(BatchNormalization())
+model.add(Activation(LReLU))
+model.add(MaxPooling2D(pool_size=(3, 3), strides=2))
 model.add(Conv2D(20, kernel_size=(3, 3),
                  activation='linear',
                  input_shape=input_shape,
@@ -141,7 +151,7 @@ model.add(Conv2D(32, kernel_size=(3, 3), activation='linear', padding='same'))
 model.add(BatchNormalization())
 model.add(Activation(LReLU))
 model.add(Flatten())
-model.add(Dense(num_classes, activation='softmax'))
+model.add(Dense(num_classes, activation='sigmoid'))
 
 logdir = "./logs/HW4_" + datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
@@ -150,7 +160,7 @@ model.compile(loss=keras.losses.categorical_crossentropy,
               optimizer=keras.optimizers.Adadelta(),
               metrics=['accuracy'])
 
-model.fit(x_train, y_train,
+history = model.fit(x_train, y_train,
           batch_size=batch_size,
           epochs=epochs,
           verbose=1,
@@ -161,3 +171,32 @@ model.fit(x_train, y_train,
 score = model.evaluate(x_test, y_test, verbose=0)
 
 print('Test accuracy:', score[1])
+predictions = model.predict_proba(x_test)
+pred_true = list(zip(predictions, y_test))
+pred_true.sort(key=lambda x: x[0][1])
+predictions, y_test = zip(*pred_true )
+m = keras.metrics.AUC()
+m.update_state(y_test, predictions)
+
+print('AUROC = ', keras.backend.get_value(m.result()))
+# list all data in history
+print(history.history.keys())
+# summarize history for accuracy
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('acc.png')
+plt.show()
+# summarize history for loss
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('loss.png')
+plt.show()
+
