@@ -128,57 +128,57 @@ for file in os.listdir(os.path.join(male_path)):
     thresh = cv2.threshold(edges, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-    print(cnts)
     cv2.fillPoly(edges, cnts, [255, 255, 255])
 
-    sq_img = edges
+    sq_img_bin = edges / 255
+
+    sq_img = np.multiply(sq_img, sq_img_bin)
+    sq_img = (255 - (sq_img_bin * 255)) + sq_img
+
+
 
     img_name = '../data/images/split/cropped_length/male/' + str(i) + '.bmp'
     cv2.imwrite(img_name, sq_img)
 
-    # edges = cv2.Canny(np.uint8(sq_img), 400, 500)
-    # edges = edges // 255
-    # edges = edges.astype(int)
-    # img_binary = (np.array(sq_img) // 255).astype(int)
-    #
-    # img_binary = np.bitwise_and(np.invert(edges), img_binary)
-    # img_binary = img_binary * 255
-    # sq_img = img_binary.astype(float)
-    #
-    # img_name = '../data/images/split/cropped_length/masked/male/' + str(i) + '.bmp'
-    # cv2.imwrite(img_name, sq_img)
     i += 1
 
-# i = 0
-# female_path = folder_path + '/female'
-# for file in os.listdir(os.path.join(female_path)):
-#
-#     left = crop_coords_female[i][0]
-#     right = crop_coords_female[i][1]
-#     top = crop_coords_female[i][2]
-#     bottom = crop_coords_female[i][3]
-#
-#     img = cv2.imread(os.path.join(female_path, file), 0)
-#
-#     img = img[top - 15:, left - 25:]
-#     new_width = right - left
-#     new_height = bottom - top
-#     img = img[:new_height + 25, :new_width + 45]
-#     h, w = img.shape
-#
-#     sq_img = np.ones((img_dim + 50, img_dim + 50)) * 255
-#     hh, ww = sq_img.shape
-#
-#     yoff = round((hh - h) / 2)
-#     xoff = round((ww - w) / 2)
-#
-#     rand_pixels = img.flatten()
-#     rand_pixels = rand_pixels[rand_pixels > 175]
-#     sq_img = np.random.choice(rand_pixels, size=(hh,ww))
-#
-#     sq_img[yoff:yoff+h, xoff:xoff+w] = img
-#
-#     img_name = '../data/images/split/cropped_length/female/' + str(i) + '.bmp'
-#     cv2.imwrite(img_name, sq_img)
-#     i += 1
+i = 0
+female_path = folder_path + '/female'
+for file in os.listdir(os.path.join(female_path)):
+
+    left = crop_coords_female[i][0]
+    right = crop_coords_female[i][1]
+    top = crop_coords_female[i][2]
+    bottom = crop_coords_female[i][3]
+
+    img = cv2.imread(os.path.join(female_path, file), 0)
+
+    img = img[top - 15:, left - 25:]
+    new_width = right - left
+    new_height = bottom - top
+    img = img[:new_height + 25, :new_width + 45]
+    h, w = img.shape
+
+    sq_img = np.ones((img_dim + 50, img_dim + 50)) * 255
+    hh, ww = sq_img.shape
+
+    yoff = round((hh - h) / 2)
+    xoff = round((ww - w) / 2)
+
+    sq_img[yoff:yoff + h, xoff:xoff + w] = img
+
+    edges = cv2.Canny(np.uint8(sq_img), 250, 450)
+    thresh = cv2.threshold(edges, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    cv2.fillPoly(edges, cnts, [255, 255, 255])
+
+    sq_img_bin = edges / 255
+
+    sq_img = np.multiply(sq_img, sq_img_bin)
+    sq_img = (255 - (sq_img_bin * 255)) + sq_img
+
+    img_name = '../data/images/split/cropped_length/female/' + str(i) + '.bmp'
+    cv2.imwrite(img_name, sq_img)
+    i+= 1
 
